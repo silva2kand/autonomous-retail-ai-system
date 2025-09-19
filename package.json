@@ -1,0 +1,169 @@
+{
+  "name": "spect-armykit",
+  "displayName": "Spect Sun Armies Kit",
+  "description": "VS Code extension that transforms the editor into a runtime environment for your agent hierarchy",
+  "version": "0.0.1",
+  "publisher": "undefined_publisher",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:spect-armykit.openIde",
+    "onChatParticipant:spect-armykit.chat",
+    "onCommand:spect-armykit.selectModel"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "spect-armykit.openIde",
+        "title": "Open Spect Sun Armies IDE"
+      },
+      {
+        "command": "spect-armykit.selectModel",
+        "title": "Spect Armies Kit: Select AI Model"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "spect-armykit.openIde"
+        },
+        {
+          "command": "spect-armykit.selectModel",
+          "when": "editorTextFocus",
+          "group": "navigation"
+        }
+      ]
+    },
+    "chatParticipants": [
+      {
+        "id": "spect-armykit.chat",
+        "name": "spect-armykit",
+        "description": "Agentic AI IDE chat",
+        "isSticky": true
+      }
+    ],
+    "configuration": {
+      "title": "Spect Sun Armies Kit",
+      "properties": {
+        "spect-armykit.apiProvider": {
+          "type": "string",
+          "default": "github",
+          "enum": [
+            "openai",
+            "azure",
+            "github",
+            "google",
+            "local",
+            "gpt4all",
+            "ollama",
+            "deepseek",
+            "sherpa"
+          ],
+          "description": "Select the AI API provider"
+        },
+        "spect-armykit.openai.apiKey": {
+          "type": "string",
+          "description": "OpenAI API Key"
+        },
+        "spect-armykit.openai.baseURL": {
+          "type": "string",
+          "default": "https://api.openai.com/v1",
+          "description": "OpenAI Base URL"
+        },
+        "spect-armykit.azure.endpoint": {
+          "type": "string",
+          "description": "Azure AI Endpoint"
+        },
+        "spect-armykit.azure.apiKey": {
+          "type": "string",
+          "description": "Azure API Key"
+        },
+        "spect-armykit.azure.model": {
+          "type": "string",
+          "default": "gpt-4",
+          "description": "Azure Model Name"
+        },
+        "spect-armykit.github.endpoint": {
+          "type": "string",
+          "default": "https://models.inference.ai.azure.com",
+          "description": "GitHub Models API Endpoint"
+        },
+        "spect-armykit.github.apiKey": {
+          "type": "string",
+          "description": "GitHub Personal Access Token for Models API"
+        },
+        "spect-armykit.google.apiKey": {
+          "type": "string",
+          "description": "Google AI API Key"
+        },
+        "spect-armykit.deepseek.apiKey": {
+          "type": "string",
+          "description": "DeepSeek API Key"
+        },
+        "spect-armykit.deepseek.baseURL": {
+          "type": "string",
+          "default": "https://api.deepseek.com/v1",
+          "description": "DeepSeek Base URL"
+        },
+        "spect-armykit.local.endpoint": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "Local API Endpoint (e.g., Ollama)"
+        },
+        "spect-armykit.gpt4all.endpoint": {
+          "type": "string",
+          "default": "http://localhost:4891",
+          "description": "GPT4All API Endpoint"
+        },
+        "spect-armykit.model": {
+          "type": "string",
+          "default": "gpt-4o-mini",
+          "description": "Model name"
+        },
+        "spect-armykit.sherpa.apiKey": {
+          "type": "string",
+          "description": "Sherpa Coder API Key"
+        },
+        "spect-armykit.sherpa.baseURL": {
+          "type": "string",
+          "default": "https://api.sherpacoder.com/v1",
+          "description": "Sherpa Coder Base URL"
+        },
+        "spect-armykit.deepseek.model": {
+          "type": "string",
+          "default": "deepseek-coder",
+          "description": "DeepSeek model name"
+        },
+        "spect-armykit.sherpa.model": {
+          "type": "string",
+          "default": "sherpa-coder",
+          "description": "Sherpa Coder model name"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "16.x",
+    "@types/vscode": "^1.74.0",
+    "eslint": "^8.0.0",
+    "typescript": "^4.4.3"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "lovable": "^0.0.0",
+    "openai": "^4.0.0"
+  }
+}
