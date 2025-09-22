@@ -256,7 +256,7 @@ Thank you for completing this educational journey through {', '.join(topics)}. R
 
 class MediaAgent:
     def search_and_download_clips(self, topics: List[str], num_clips: int = 3, duration_range: tuple = (10, 45)) -> List[str]:
-        """Search for and download relevant video clips from multiple sources - FAST VERSION"""
+        """Search for and download relevant video clips from multiple sources - IMPROVED VERSION"""
         print(f"Searching for {num_clips} clips about: {topics}")
 
         clips = []
@@ -264,81 +264,128 @@ class MediaAgent:
         try:
             import yt_dlp
             import random
+            import time
 
-            # Use shorter, more specific search queries for faster results
+            # Enhanced search queries for better results
             search_queries = []
             for topic in topics:
                 search_queries.extend([
-                    f"{topic} short clip",
-                    f"{topic} quick explanation",
-                    f"{topic} overview"
+                    f"{topic} educational video",
+                    f"{topic} tutorial",
+                    f"{topic} explanation",
+                    f"{topic} documentary clip",
+                    f"{topic} news report",
+                    f"{topic} overview",
+                    f"{topic} guide",
+                    f"{topic} introduction"
                 ])
 
-            # Optimized download options for speed
+            # Improved download options for reliability
             ydl_opts = {
-                'format': 'best[height<=480]',  # Lower quality for faster downloads
+                'format': 'best[height<=720][ext=mp4]',  # Better quality but still reasonable
                 'outtmpl': os.path.join(DOWNLOAD_DIR, 'temp_clip_%(id)s.%(ext)s'),
-                'quiet': True,
-                'no_warnings': True,
+                'quiet': False,  # Show progress for debugging
+                'no_warnings': False,
                 'extract_flat': False,
-                'download_ranges': lambda info_dict, ydl: [{'start_time': 0, 'end_time': 30}],  # Download only first 30 seconds
+                'download_ranges': lambda info_dict, ydl: [{'start_time': 0, 'end_time': 45}],  # Download up to 45 seconds
+                'socket_timeout': 30,  # Timeout for slow connections
+                'retries': 3,  # Retry failed downloads
+                'fragment_retries': 3,
+                'skip_unavailable_fragments': True,
+                'ignoreerrors': False,  # Don't ignore errors
+                'restrictfilenames': True,
+                'windowsfilenames': True,
             }
 
             downloaded_count = 0
-            max_attempts = min(num_clips * 2, len(search_queries))  # Limit attempts
+            max_attempts = min(num_clips * 3, len(search_queries))  # More attempts per clip
+            used_queries = set()  # Track used queries to avoid duplicates
 
             for i in range(max_attempts):
                 if downloaded_count >= num_clips:
                     break
 
                 try:
-                    query = search_queries[i % len(search_queries)]
-                    print(f"Quick search: {query}")
+                    # Get a unique query we haven't used yet
+                    available_queries = [q for q in search_queries if q not in used_queries]
+                    if not available_queries:
+                        used_queries.clear()  # Reset if we've used all queries
+                        available_queries = search_queries[:]
 
-                    # Quick search with limited results
-                    with yt_dlp.YoutubeDL({'quiet': True, 'extract_flat': True, 'max_downloads': 1}) as ydl:
-                        search_results = ydl.extract_info(f"ytsearch1:{query}", download=False)
+                    query = random.choice(available_queries)
+                    used_queries.add(query)
+                    print(f"Search attempt {i+1}/{max_attempts}: {query}")
+
+                    # Search for multiple results to have better options
+                    with yt_dlp.YoutubeDL({'quiet': True, 'extract_flat': True, 'max_downloads': 3}) as ydl:
+                        search_results = ydl.extract_info(f"ytsearch3:{query}", download=False)
 
                         if 'entries' in search_results and search_results['entries']:
-                            video = search_results['entries'][0]
-                            video_url = video['url']
+                            # Try each video in the search results
+                            for video in search_results['entries']:
+                                if downloaded_count >= num_clips:
+                                    break
 
-                            # Download with time limit for speed
-                            download_opts = ydl_opts.copy()
-                            download_opts['outtmpl'] = os.path.join(DOWNLOAD_DIR, f"clip_{downloaded_count}.%(ext)s")
-
-                            with yt_dlp.YoutubeDL(download_opts) as ydl_download:
                                 try:
-                                    info = ydl_download.extract_info(video_url, download=True)
-                                    filename = ydl_download.prepare_filename(info)
+                                    video_url = video['url']
+                                    print(f"  Trying video: {video.get('title', 'Unknown title')}")
 
-                                    # Quick validation - check if file exists and has content
-                                    if os.path.exists(filename) and os.path.getsize(filename) > 10000:  # At least 10KB
-                                        clips.append(filename)
-                                        downloaded_count += 1
-                                        print(f"✅ Downloaded clip {downloaded_count}: {os.path.basename(filename)}")
-                                    else:
-                                        # Remove invalid file
+                                    # Download with improved options
+                                    download_opts = ydl_opts.copy()
+                                    download_opts['outtmpl'] = os.path.join(DOWNLOAD_DIR, f"clip_{downloaded_count}.%(ext)s")
+
+                                    with yt_dlp.YoutubeDL(download_opts) as ydl_download:
+                                        info = ydl_download.extract_info(video_url, download=True)
+                                        filename = ydl_download.prepare_filename(info)
+
+                                        # Enhanced validation
                                         if os.path.exists(filename):
-                                            os.remove(filename)
+                                            file_size = os.path.getsize(filename)
+                                            print(f"    Downloaded: {os.path.basename(filename)} ({file_size/1024/1024:.2f} MB)")
+
+                                            if file_size > 100000:  # At least 100KB for real content
+                                                clips.append(filename)
+                                                downloaded_count += 1
+                                                print(f"✅ Successfully downloaded clip {downloaded_count}: {os.path.basename(filename)}")
+                                                break  # Success, move to next clip
+                                            else:
+                                                print(f"    File too small ({file_size} bytes), trying next video...")
+                                                if os.path.exists(filename):
+                                                    os.remove(filename)
+                                        else:
+                                            print("    File not found after download")
 
                                 except Exception as dl_error:
-                                    print(f"Download failed: {dl_error}")
+                                    print(f"    Download failed: {dl_error}")
                                     continue
+
+                        else:
+                            print(f"  No search results for: {query}")
 
                 except Exception as e:
                     print(f"Search attempt {i+1} failed: {e}")
+                    time.sleep(1)  # Brief pause before retry
                     continue
 
         except ImportError:
-            print("yt-dlp not available")
+            print("yt-dlp not available, will create placeholder clips")
+        except Exception as e:
+            print(f"MediaAgent error: {e}")
 
-        # If we have at least one clip, we're good. Otherwise create fast placeholders
+        # If we don't have enough real clips, try alternative sources or create better placeholders
+        if len(clips) < num_clips:
+            print(f"Only got {len(clips)}/{num_clips} real clips, attempting alternative methods...")
+
+            # Try alternative search approach
+            alt_clips = self._try_alternative_downloads(topics, num_clips - len(clips))
+            clips.extend(alt_clips)
+
+        # Final fallback: create minimal placeholders only if we have no real content
         if not clips:
-            print("Creating fast placeholder clips...")
-            clips = self._create_fast_placeholders(num_clips, topics)
+            print("No real clips obtained, creating minimal placeholders...")
+            clips = self._create_minimal_placeholders(num_clips, topics)
 
-        print(f"Total clips ready: {len(clips)}")
+        print(f"Total clips ready: {len(clips)} (real: {len([c for c in clips if os.path.getsize(c) > 100000])})")
         notebook.log("MediaAgent", "search_and_download_clips", f"Downloaded {len(clips)} clips")
         return clips
 
@@ -385,7 +432,98 @@ class MediaAgent:
                 clips.append(clip_path)
 
         return clips
-    
+
+    def _try_alternative_downloads(self, topics: List[str], num_clips: int) -> List[str]:
+        """Try alternative download methods when primary method fails"""
+        print(f"Trying alternative download methods for {num_clips} clips...")
+        clips = []
+
+        try:
+            import yt_dlp
+
+            # Alternative search queries - more specific and educational
+            alt_queries = []
+            for topic in topics:
+                alt_queries.extend([
+                    f"{topic} educational content",
+                    f"learn about {topic}",
+                    f"{topic} basics tutorial",
+                    f"{topic} fundamentals",
+                    f"{topic} course preview"
+                ])
+
+            # Simplified download options for alternative method
+            alt_opts = {
+                'format': 'best[height<=480][ext=mp4]',
+                'outtmpl': os.path.join(DOWNLOAD_DIR, f"alt_clip_%(autonumber)s.%(ext)s"),
+                'quiet': True,
+                'no_warnings': True,
+                'socket_timeout': 20,
+                'retries': 2,
+            }
+
+            for i in range(min(num_clips * 2, len(alt_queries))):
+                if len(clips) >= num_clips:
+                    break
+
+                try:
+                    query = alt_queries[i % len(alt_queries)]
+                    print(f"  Alternative search: {query}")
+
+                    with yt_dlp.YoutubeDL({'quiet': True, 'extract_flat': True, 'max_downloads': 1}) as ydl:
+                        search_results = ydl.extract_info(f"ytsearch1:{query}", download=False)
+
+                        if 'entries' in search_results and search_results['entries']:
+                            video = search_results['entries'][0]
+                            video_url = video['url']
+
+                            with yt_dlp.YoutubeDL(alt_opts) as ydl_download:
+                                info = ydl_download.extract_info(video_url, download=True)
+                                filename = ydl_download.prepare_filename(info)
+
+                                if os.path.exists(filename) and os.path.getsize(filename) > 50000:
+                                    clips.append(filename)
+                                    print(f"  ✅ Alternative download successful: {os.path.basename(filename)}")
+                                else:
+                                    if os.path.exists(filename):
+                                        os.remove(filename)
+
+                except Exception as e:
+                    print(f"  Alternative download attempt {i+1} failed: {e}")
+                    continue
+
+        except Exception as e:
+            print(f"Alternative download method failed: {e}")
+
+        return clips
+
+    def _create_minimal_placeholders(self, num_clips: int, topics: List[str]) -> List[str]:
+        """Create minimal placeholder files when all download methods fail"""
+        clips = []
+
+        for i in range(num_clips):
+            clip_path = os.path.join(DOWNLOAD_DIR, f"clip_{i}_minimal.mp4")
+
+            # Create a simple text file indicating the content that should be there
+            with open(clip_path.replace('.mp4', '.txt'), 'w') as f:
+                topic_text = topics[i % len(topics)] if topics else "Topic"
+                f.write(f"Minimal placeholder for: {topic_text}\n")
+                f.write("This indicates that real video content could not be downloaded.\n")
+                f.write("To fix: Check internet connection, YouTube availability, and yt-dlp installation.")
+
+            # Create a tiny video file if possible
+            try:
+                from moviepy.editor import ColorClip
+                background = ColorClip(size=(640, 360), color=(50, 50, 50), duration=5)
+                background.write_videofile(clip_path, fps=10, codec='libx264', verbose=False, logger=None)
+                background.close()
+                clips.append(clip_path)
+                print(f"Created minimal placeholder: {os.path.basename(clip_path)}")
+            except:
+                clips.append(clip_path.replace('.mp4', '.txt'))
+
+        return clips
+
     def _trim_video(self, video_path: str, duration: int):
         """Trim video to specified duration"""
         try:
@@ -893,9 +1031,27 @@ def start_livestream():
     """Start live streaming"""
     video_path = request.form.get('video_path')
     platform = request.form.get('platform', 'youtube')
-    
+
     # Placeholder for live streaming
     return {"status": "success", "message": f"Live stream to {platform} placeholder"}
+
+@app.route('/video/<filename>')
+def serve_video(filename):
+    """Serve generated video files"""
+    try:
+        # Serve from output directory
+        video_path = os.path.join(OUTPUT_DIR, filename)
+        if os.path.exists(video_path):
+            return send_file(video_path, mimetype='video/mp4')
+
+        # Also check downloads directory for clips
+        clip_path = os.path.join(DOWNLOAD_DIR, filename)
+        if os.path.exists(clip_path):
+            return send_file(clip_path, mimetype='video/mp4')
+
+        return {"status": "error", "message": "Video file not found"}, 404
+    except Exception as e:
+        return {"status": "error", "message": str(e)}, 500
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
